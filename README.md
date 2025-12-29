@@ -34,7 +34,65 @@ Sistema completo desarrollado con Django, React y PostgreSQL que permite gestion
 
 ## Instalación
 
-### Prerrequisitos
+### Opción 1: Docker (Recomendado)
+
+#### Prerrequisitos
+- Docker
+- Docker Compose
+
+#### Pasos
+
+1. Clonar el repositorio:
+```bash
+git clone <url-del-repositorio>
+cd Prueba
+```
+
+2. Configurar variables de entorno:
+```bash
+cp backend/.env.example backend/.env
+# Editar backend/.env con tus configuraciones
+```
+
+3. Construir y levantar los contenedores:
+```bash
+docker-compose up --build
+```
+
+4. En otra terminal, ejecutar migraciones:
+```bash
+docker-compose exec backend python manage.py migrate
+```
+
+5. Crear superusuario:
+```bash
+docker-compose exec backend python manage.py createsuperuser
+```
+
+El sistema estará disponible en:
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
+- PostgreSQL: `localhost:5432`
+
+#### Comandos útiles de Docker
+
+```bash
+# Detener los contenedores
+docker-compose down
+
+# Ver logs
+docker-compose logs -f
+
+# Ejecutar comandos en el backend
+docker-compose exec backend python manage.py <comando>
+
+# Reconstruir contenedores
+docker-compose up --build
+```
+
+### Opción 2: Instalación Manual
+
+#### Prerrequisitos
 - Python 3.8+
 - Node.js 14+
 - PostgreSQL
