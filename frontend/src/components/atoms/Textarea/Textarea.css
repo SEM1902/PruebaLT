@@ -1,0 +1,29 @@
+.textarea {
+  width: 100%;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.3s ease;
+  outline: none;
+}
+
+.textarea:focus {
+  border-color: #3498db;
+}
+
+.textarea:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.textarea-error {
+  border-color: #e74c3c;
+}
+
+.textarea-error:focus {
+  border-color: #e74c3c;
+}
+

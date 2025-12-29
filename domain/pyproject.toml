@@ -1,0 +1,42 @@
+[project]
+name = "domain-layer"
+version = "0.1.0"
+description = "Capa de dominio independiente para modelos y entidades de negocio"
+authors = [
+    {name = "Sistema de Gestión", email = "sistema@ejemplo.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+
+[tool.poetry]
+name = "domain-layer"
+version = "0.1.0"
+description = "Capa de dominio independiente para modelos y entidades de negocio"
+authors = ["Sistema de Gestión <sistema@ejemplo.com>"]
+readme = "README.md"
+packages = [{include = "domain_layer", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# Configuración para setuptools (opcional, setup.py tiene prioridad)
+[tool.setuptools]
+packages = ["domain_layer"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools]
+packages = ["domain_layer"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+

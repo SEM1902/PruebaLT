@@ -1,0 +1,14 @@
+.label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+}
+
+.label-required::after {
+  content: ' *';
+  color: var(--danger-color);
+}
+

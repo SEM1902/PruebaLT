@@ -1,0 +1,264 @@
+.inventario-container {
+  width: 100%;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.inventario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.inventario-header h1 {
+  color: var(--text-primary);
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+
+.inventario-filter {
+  margin-bottom: 2rem;
+  max-width: 400px;
+}
+
+.inventario-form-card {
+  background: var(--bg-primary);
+  padding: 2.5rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-base);
+}
+
+.inventario-form-card:hover {
+  box-shadow: var(--shadow-xl);
+}
+
+.inventario-form-card h2 {
+  margin-bottom: 2rem;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+.inventario-empresa-section {
+  background: var(--bg-primary);
+  padding: 2.5rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-base);
+  overflow: hidden;
+  position: relative;
+}
+
+.inventario-empresa-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--primary-color) 0%, var(--primary-light) 100%);
+}
+
+.inventario-empresa-section:hover {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-2px);
+}
+
+.inventario-empresa-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.inventario-empresa-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+
+.inventario-empresa-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.inventario-table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.inventario-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  background: var(--bg-primary);
+}
+
+.inventario-table thead {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.inventario-table th {
+  padding: 1.25rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.inventario-table td {
+  padding: 1.25rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.inventario-table tbody tr {
+  transition: all var(--transition-fast);
+}
+
+.inventario-table tbody tr:hover {
+  background-color: var(--bg-secondary);
+  transform: scale(1.01);
+}
+
+.inventario-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.hash-cell {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+  max-width: 250px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .inventario-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .inventario-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .inventario-empresa-section {
+    padding: 1.5rem;
+  }
+
+  .inventario-empresa-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .inventario-empresa-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .inventario-empresa-actions .btn {
+    width: 100%;
+  }
+
+  .inventario-table th,
+  .inventario-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .hash-cell {
+    max-width: 150px;
+    font-size: 0.625rem;
+  }
+}
+
+.empty-state {
+  background: var(--bg-primary);
+  padding: 4rem 2rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  border: 1px solid var(--border-color);
+}
+
+.empty-state-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.5;
+}
+
+.empty-state-text {
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state-subtext {
+  color: var(--text-tertiary);
+  font-size: 0.9375rem;
+}
+

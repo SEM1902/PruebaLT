@@ -1,0 +1,15 @@
+.form-field {
+  margin-bottom: 1.5rem;
+}
+
+.form-field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--danger-color);
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+

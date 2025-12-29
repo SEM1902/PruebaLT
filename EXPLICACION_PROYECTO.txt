@@ -1,0 +1,803 @@
+================================================================================
+                    EXPLICACIÓN DEL PROYECTO - ENTREVISTA TÉCNICA
+================================================================================
+
+1. ARQUITECTURA GENERAL
+================================================================================
+
+Stack Tecnológico:
+- Backend: Django + Django REST Framework + PostgreSQL
+- Frontend: React + React Router + Bootstrap + React-Bootstrap
+- Autenticación: JWT (JSON Web Tokens) con SimpleJWT
+- IA: OpenAI API (GPT-3.5-turbo)
+- Blockchain: SHA-256 para hashing de transacciones
+- PDF: ReportLab
+- Email: SMTP (Gmail u otros servidores)
+- Gestión de Dependencias: Poetry (para capa de dominio)
+
+Estructura del Proyecto:
+- Backend: Django REST API (Capa de Aplicación e Infraestructura)
+- Capa de Dominio: Paquete independiente con entidades de negocio (Python puro)
+- Frontend: React SPA (Single Page Application)
+- Base de Datos: PostgreSQL
+- Diseño: Atomic Design (Atoms, Molecules, Organisms, Pages)
+
+Arquitectura del Proyecto (Arquitectura Limpia):
+- Capa de Dominio (domain/): Entidades y reglas de negocio independientes
+  - Ubicación: domain/src/domain_layer/entities/
+  - Tecnología: Python puro (sin dependencias de frameworks)
+  - Gestión: Poetry (pyproject.toml)
+  - Entidades: Empresa, Producto, Inventario
+  - Sin dependencias de: Django, Vistas, Serializers, Controladores, HTTP
+
+- Capa de Aplicación e Infraestructura (backend/): Django REST API
+  - Exposición de APIs (REST)
+  - Autenticación (JWT)
+  - Persistencia de datos (Django ORM + PostgreSQL)
+  - Integraciones externas (OpenAI, Email, PDF)
+  - Adaptadores: Mapeo entre entidades de dominio y modelos Django
+
+
+2. CONEXIÓN A LA BASE DE DATOS
+================================================================================
+
+Archivo: backend/config/settings.py (líneas 78-87)
+
+Configuración:
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'prueba_db'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'postgres'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+    }
+}
+
+Variables de Entorno (.env):
+- DB_NAME: Nombre de la base de datos (prueba_db)
+- DB_USER: Usuario de PostgreSQL
+- DB_PASSWORD: Contraseña de PostgreSQL
+- DB_HOST: Host (localhost por defecto)
+- DB_PORT: Puerto (5432 por defecto)
+
+Nota: Las credenciales se cargan desde el archivo .env usando python-dotenv
+
+
+3. ARQUITECTURA DE CAPA DE DOMINIO
+================================================================================
+
+3.1. Estructura de la Capa de Dominio
+Archivo: domain/pyproject.toml
+
+La capa de dominio es un paquete independiente gestionado con Poetry que contiene
+únicamente las entidades y reglas de negocio, sin dependencias de frameworks.
+
+Estructura:
+- domain/
+  - src/
+    - domain_layer/
+      - entities/
+        - empresa.py: Entidad Empresa
+        - producto.py: Entidad Producto
+        - inventario.py: Entidad Inventario
+  - pyproject.toml: Configuración de Poetry
+  - README.md: Documentación de la capa de dominio
+
+3.2. Entidades de Dominio
+
+3.2.1. Empresa (domain/src/domain_layer/entities/empresa.py)
+- nit: str (9-15 dígitos, validación de negocio)
+- nombre: str (máximo 200 caracteres)
+- direccion: str
+- telefono: str (máximo 20 caracteres)
+- fecha_creacion, fecha_actualizacion: Optional[datetime]
+- Métodos de negocio:
+  - actualizar_datos(): Actualiza datos con validaciones
+  - Validaciones automáticas en __post_init__
+
+3.2.2. Producto (domain/src/domain_layer/entities/producto.py)
+- codigo: str (máximo 50 caracteres, único)
+- nombre: str (máximo 200 caracteres)
+- caracteristicas: str
+- precio_usd, precio_eur, precio_cop: Decimal
+- empresa_nit: str (referencia a empresa)
+- fecha_creacion, fecha_actualizacion: Optional[datetime]
+- Métodos de negocio:
+  - actualizar_precios(): Actualiza precios con validaciones
+  - actualizar_datos(): Actualiza datos con validaciones
+  - Validaciones automáticas en __post_init__
+
+3.2.3. Inventario (domain/src/domain_layer/entities/inventario.py)
+- empresa_nit: str (referencia a empresa)
+- producto_codigo: str (referencia a producto)
+- cantidad: int (no negativa)
+- fecha_ingreso, fecha_actualizacion: Optional[datetime]
+- transaccion_hash: Optional[str] (hash blockchain)
+- Métodos de negocio:
+  - actualizar_cantidad(): Actualiza cantidad con validaciones
+  - incrementar_cantidad(): Incrementa cantidad
+  - decrementar_cantidad(): Decrementa cantidad
+  - establecer_hash_transaccion(): Establece hash de blockchain
+  - Validaciones automáticas en __post_init__
+
+3.3. Adaptadores (backend/api/domain_adapters.py)
+
+Los adaptadores permiten mapear entre entidades de dominio y modelos Django:
+
+- EmpresaAdapter:
+  - to_domain(): Convierte modelo Django → entidad de dominio
+  - to_django(): Convierte entidad de dominio → modelo Django
+  - from_dict(): Crea entidad desde diccionario
+
+- ProductoAdapter:
+  - to_domain(): Convierte modelo Django → entidad de dominio
+  - to_django(): Convierte entidad de dominio → modelo Django
+  - from_dict(): Crea entidad desde diccionario
+
+- InventarioAdapter:
+  - to_domain(): Convierte modelo Django → entidad de dominio
+  - to_django(): Convierte entidad de dominio → modelo Django
+  - from_dict(): Crea entidad desde diccionario
+
+3.4. Integración con Django
+
+Los modelos Django (backend/api/models.py) mantienen su estructura original
+para compatibilidad, pero incluyen métodos para trabajar con entidades de dominio:
+
+- to_domain(): Convierte el modelo a entidad de dominio
+- from_domain(): Crea o actualiza modelo desde entidad de dominio
+
+El backend está configurado (backend/config/settings.py) para encontrar
+automáticamente el paquete de dominio en el PYTHONPATH.
+
+
+4. MODELOS DE BASE DE DATOS (Django ORM)
+================================================================================
+
+Archivo: backend/api/models.py
+
+Nota: Estos modelos Django actúan como capa de persistencia y mantienen
+compatibilidad con Django ORM. Las reglas de negocio están en la capa de dominio.
+
+4.1. User (Usuario Personalizado)
+- email: EmailField (único, usado como USERNAME_FIELD)
+- rol: CharField con choices (ADMINISTRADOR, EXTERNO)
+- is_active, is_staff, date_joined
+- Extiende AbstractBaseUser y PermissionsMixin
+- Autenticación por email (no username)
+- Nota: Este modelo permanece en Django por su acoplamiento con autenticación
+
+4.2. Empresa (Modelo Django)
+- nit: CharField (Primary Key, 9-15 dígitos)
+- nombre: CharField (200 caracteres)
+- direccion: TextField
+- telefono: CharField (20 caracteres)
+- fecha_creacion, fecha_actualizacion (auto)
+- Métodos: to_domain(), from_domain()
+
+4.3. Producto (Modelo Django)
+- codigo: CharField (único, 50 caracteres)
+- nombre: CharField (200 caracteres)
+- caracteristicas: TextField
+- precio_usd, precio_eur, precio_cop: DecimalField
+- empresa: ForeignKey a Empresa
+- fecha_creacion, fecha_actualizacion (auto)
+- Métodos: to_domain(), from_domain()
+
+4.4. Inventario (Modelo Django)
+- empresa: ForeignKey a Empresa
+- producto: ForeignKey a Producto
+- cantidad: PositiveIntegerField
+- fecha_ingreso, fecha_actualizacion (auto)
+- transaccion_hash: CharField (hash blockchain SHA-256)
+- Unique constraint: (empresa, producto)
+- Métodos: to_domain(), from_domain()
+
+
+5. RUTAS DEL BACKEND (API)
+================================================================================
+
+Archivo Principal: backend/config/urls.py
+- /admin/ → Django Admin
+- /api/ → Incluye todas las rutas de la API
+
+Archivo API: backend/api/urls.py
+
+4.1. Autenticación
+POST /api/login/
+- Descripción: Inicia sesión y obtiene tokens JWT
+- Permisos: AllowAny (público)
+- Request Body: { "email": "usuario@ejemplo.com", "password": "contraseña" }
+- Response: { "refresh": "...", "access": "...", "user": {...} }
+- Vista: LoginView (APIView)
+
+POST /api/token/refresh/
+- Descripción: Refresca el access token usando refresh token
+- Permisos: AllowAny
+- Vista: TokenRefreshView (SimpleJWT)
+
+4.2. Empresas
+GET /api/empresas/
+- Descripción: Lista todas las empresas (paginado)
+- Permisos: IsAuthenticated (lectura para todos, escritura solo ADMINISTRADOR)
+- Query Params: ?search=nombre (búsqueda por nombre)
+- Vista: EmpresaViewSet
+
+GET /api/empresas/{id}/
+- Descripción: Obtiene una empresa específica
+- Permisos: IsAuthenticated
+
+POST /api/empresas/
+- Descripción: Crea una nueva empresa
+- Permisos: IsAdministrador
+- Request Body: { "nit": "123456789", "nombre": "...", "direccion": "...", "telefono": "..." }
+
+PUT/PATCH /api/empresas/{id}/
+- Descripción: Actualiza una empresa
+- Permisos: IsAdministrador
+
+DELETE /api/empresas/{id}/
+- Descripción: Elimina una empresa
+- Permisos: IsAdministrador
+
+4.3. Productos
+GET /api/productos/
+- Descripción: Lista todos los productos (paginado)
+- Permisos: IsAdministrador
+- Query Params: 
+  - ?empresa=nit (filtrar por empresa)
+  - ?search=nombre (búsqueda por nombre)
+- Vista: ProductoViewSet
+
+GET /api/productos/{id}/
+- Descripción: Obtiene un producto específico
+- Permisos: IsAdministrador
+
+POST /api/productos/
+- Descripción: Crea un nuevo producto
+- Permisos: IsAdministrador
+- Request Body: { "codigo": "...", "nombre": "...", "caracteristicas": "...", 
+                   "precio_usd": 100.00, "empresa": "nit" }
+- Nota: Convierte automáticamente precio_usd a precio_eur y precio_cop
+
+PUT/PATCH /api/productos/{id}/
+- Descripción: Actualiza un producto
+- Permisos: IsAdministrador
+- Nota: Si se actualiza precio_usd, recalcula automáticamente EUR y COP
+
+DELETE /api/productos/{id}/
+- Descripción: Elimina un producto
+- Permisos: IsAdministrador
+
+GET /api/productos/{id}/ai_suggestions/
+- Descripción: Obtiene sugerencias de productos usando IA (OpenAI)
+- Permisos: IsAdministrador
+- Response: { "suggestions": "..." }
+
+GET /api/productos/convert-currency/?amount=100
+- Descripción: Convierte un monto en USD a EUR y COP en tiempo real
+- Permisos: IsAdministrador
+- Query Params: amount (monto en USD)
+- Response: { "usd": 100.0, "eur": 92.0, "cop": 400000.0 }
+
+4.4. Inventario
+GET /api/inventario/
+- Descripción: Lista todo el inventario (paginado)
+- Permisos: IsAdministrador
+- Query Params: ?empresa=nit (filtrar por empresa)
+- Vista: InventarioViewSet
+
+GET /api/inventario/{id}/
+- Descripción: Obtiene un registro de inventario específico
+- Permisos: IsAdministrador
+
+POST /api/inventario/
+- Descripción: Crea un nuevo registro de inventario
+- Permisos: IsAdministrador
+- Request Body: { "empresa": "nit", "producto": id, "cantidad": 10 }
+- Nota: Genera automáticamente hash de blockchain (SHA-256)
+
+PUT/PATCH /api/inventario/{id}/
+- Descripción: Actualiza la cantidad de un producto en inventario
+- Permisos: IsAdministrador
+- Nota: Regenera hash de blockchain al actualizar
+
+DELETE /api/inventario/{id}/
+- Descripción: Elimina un registro de inventario
+- Permisos: IsAdministrador
+
+GET /api/inventario/empresa/{empresa_nit}/
+- Descripción: Obtiene inventario filtrado por empresa
+- Permisos: IsAdministrador
+- Response: Array de objetos de inventario
+
+GET /api/inventario/pdf/{empresa_nit}/
+- Descripción: Descarga PDF del inventario de una empresa
+- Permisos: IsAdministrador
+- Response: Archivo PDF (application/pdf)
+- Utiliza: ReportLab para generar PDF
+
+POST /api/inventario/send-pdf/{empresa_nit}/
+- Descripción: Envía PDF del inventario por correo electrónico
+- Permisos: IsAdministrador
+- Request Body: { "email": "destinatario@ejemplo.com" }
+- Response: { "message": "PDF enviado exitosamente a ..." }
+- Utiliza: SMTP (configurado en settings.py)
+
+GET /api/inventario/predictions/?empresa=nit
+- Descripción: Obtiene predicciones de inventario usando IA
+- Permisos: IsAdministrador
+- Query Params: ?empresa=nit (opcional, filtrar por empresa)
+- Response: { "alerts": [...], "total_alerts": 5 }
+- Utiliza: OpenAI API (GPT-3.5-turbo)
+- Nota: Envía emails automáticamente a administradores si detecta stock crítico
+
+
+6. RUTAS DEL FRONTEND
+================================================================================
+
+Archivo: frontend/src/App.js
+
+5.1. Rutas Públicas
+GET /login
+- Componente: Login
+- Descripción: Página de inicio de sesión
+- No requiere autenticación
+
+5.2. Rutas Protegidas (requieren autenticación)
+Todas las rutas protegidas usan PrivateRoute y Layout
+
+GET / (redirige a /empresas)
+- Componente: Layout (con navegación)
+- Redirige automáticamente a /empresas
+
+GET /empresas
+- Componente: Empresas
+- Descripción: CRUD de empresas
+- Permisos: Lectura para todos, escritura solo ADMINISTRADOR
+
+GET /productos
+- Componente: Productos
+- Descripción: CRUD de productos
+- Permisos: Solo ADMINISTRADOR
+- Funcionalidades:
+  - Conversión automática de monedas (USD → EUR, COP)
+  - Sugerencias de IA
+
+GET /inventario
+- Componente: Inventario
+- Descripción: Gestión de inventario
+- Permisos: Solo ADMINISTRADOR
+- Funcionalidades:
+  - Ver inventario por empresa
+  - Agregar productos al inventario
+  - Editar cantidad de productos
+  - Descargar PDF
+  - Enviar PDF por email
+  - Predicciones de IA con alertas
+
+
+7. AUTENTICACIÓN Y PERMISOS
+================================================================================
+
+6.1. Autenticación
+- Método: JWT (JSON Web Tokens)
+- Librería: django-rest-framework-simplejwt
+- Tokens: Access Token (1 hora) y Refresh Token (1 día)
+- Backend personalizado: EmailBackend (autentica por email, no username)
+- Archivo: backend/api/backends.py
+
+6.2. Permisos Personalizados
+Archivo: backend/api/permissions.py
+
+IsAdministrador:
+- Solo usuarios con rol ADMINISTRADOR pueden acceder
+- Usado en: Productos, Inventario
+
+IsAdministradorOrReadOnly:
+- ADMINISTRADOR: CRUD completo
+- EXTERNO: Solo lectura (GET)
+- Usado en: Empresas
+
+6.3. Context API (Frontend)
+Archivo: frontend/src/context/AuthContext.js
+- Maneja estado de autenticación global
+- Funciones: login(), logout(), isAuthenticated()
+- Almacena tokens en localStorage
+
+
+8. FUNCIONALIDADES PRINCIPALES
+================================================================================
+
+7.1. Conversión de Monedas
+Archivo: backend/api/currency_service.py
+- API Externa: exchangerate-api.com
+- Convierte USD → EUR y COP automáticamente
+- Se ejecuta al crear/actualizar productos
+- Endpoint en tiempo real: /api/productos/convert-currency/
+
+7.2. Generación de PDF
+Archivo: backend/api/utils.py (función generate_pdf)
+- Librería: ReportLab
+- Genera PDF con tabla de inventario
+- Incluye: código, producto, cantidad, precios (USD, EUR, COP)
+- Fecha de generación automática
+
+7.3. Envío de Emails
+Archivo: backend/api/utils.py (función send_pdf_email)
+- Método: SMTP
+- Configuración en settings.py (EMAIL_HOST, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
+- Envía PDF como adjunto
+- Validación de configuración de email
+
+7.4. Blockchain Hashing
+Archivo: backend/api/utils.py (función generate_blockchain_hash)
+- Algoritmo: SHA-256
+- Genera hash único para cada transacción de inventario
+- Datos incluidos: empresa_nit, producto_codigo, cantidad, timestamp
+- Formato: 0x + hash hexadecimal
+
+7.5. IA - Sugerencias de Productos
+Archivo: backend/api/services.py (función get_ai_product_suggestions)
+- API: OpenAI GPT-3.5-turbo
+- Analiza nombre y características del producto
+- Genera 3 sugerencias de productos complementarios
+- Endpoint: /api/productos/{id}/ai_suggestions/
+
+7.6. IA - Predicción de Inventario
+Archivo: backend/api/services.py (función get_inventory_predictions)
+- API: OpenAI GPT-3.5-turbo
+- Analiza cantidad de productos en inventario
+- Predice cuándo un producto se quedará sin stock
+- Genera alertas con niveles de riesgo (ALTO, MEDIO, BAJO)
+- Envía emails automáticos a administradores si stock es crítico (≤5 unidades)
+- Endpoint: /api/inventario/predictions/
+
+7.7. Edición de Cantidad de Inventario
+- Permite editar la cantidad de productos en inventario
+- Regenera hash de blockchain al actualizar
+- Modal de Bootstrap para edición
+
+
+9. CONFIGURACIÓN DE VARIABLES DE ENTORNO
+================================================================================
+
+Archivo: backend/.env
+
+Variables Requeridas:
+- SECRET_KEY: Clave secreta de Django
+- DB_NAME: Nombre de la base de datos PostgreSQL
+- DB_USER: Usuario de PostgreSQL
+- DB_PASSWORD: Contraseña de PostgreSQL
+- DB_HOST: Host de PostgreSQL (localhost)
+- DB_PORT: Puerto de PostgreSQL (5432)
+- EMAIL_HOST: Servidor SMTP (ej: smtp.gmail.com)
+- EMAIL_PORT: Puerto SMTP (587 para TLS)
+- EMAIL_HOST_USER: Email del remitente
+- EMAIL_HOST_PASSWORD: Contraseña de aplicación (Gmail requiere App Password)
+- OPENAI_API_KEY: Clave API de OpenAI (opcional, para funcionalidades de IA)
+
+
+10. SERIALIZERS (Validación y Transformación de Datos)
+================================================================================
+
+Archivo: backend/api/serializers.py
+
+9.1. UserSerializer
+- Campos: id, email, rol, date_joined
+- Solo lectura: id, date_joined
+
+9.2. LoginSerializer
+- Campos: email, password
+- Valida credenciales usando authenticate()
+- Retorna usuario si es válido
+
+9.3. EmpresaSerializer
+- Campos: todos los campos del modelo
+- Solo lectura: fecha_creacion, fecha_actualizacion
+
+9.4. ProductoSerializer
+- Campos: todos + empresa_nombre (read-only)
+- Lógica especial:
+  - create(): Convierte automáticamente precio_usd a EUR y COP
+  - update(): Recalcula precios si se actualiza USD
+
+9.5. InventarioSerializer
+- Campos: todos + campos relacionados (empresa_nombre, producto_nombre, etc.)
+- Solo lectura: fecha_ingreso, fecha_actualizacion, transaccion_hash
+
+9.6. InventarioCreateSerializer
+- Campos: empresa, producto, cantidad
+- Usado solo para crear (no incluye campos read-only)
+
+
+11. COMPONENTES FRONTEND (Atomic Design)
+================================================================================
+
+10.1. Atoms (Componentes básicos)
+- Button: Botón reutilizable con variantes y estados de carga
+- Input: Campo de entrada con validación
+- Label: Etiqueta de formulario
+- Textarea: Área de texto
+- Select: Selector desplegable
+- Loading: Indicador de carga
+- Spinner: Spinner de carga
+- Alert: Toast de Bootstrap para mensajes
+
+10.2. Molecules (Combinaciones de atoms)
+- FormField: Campo de formulario completo (Label + Input + Error)
+
+10.3. Organisms (Componentes complejos)
+- Layout: Layout principal con navegación y header
+- PrivateRoute: Ruta protegida que verifica autenticación
+
+10.4. Pages (Vistas completas)
+- Login: Página de inicio de sesión con modal de errores
+- Empresas: CRUD de empresas
+- Productos: CRUD de productos con conversión de monedas e IA
+- Inventario: Gestión de inventario con PDF, emails y predicciones IA
+
+
+12. FLUJO DE AUTENTICACIÓN
+================================================================================
+
+1. Usuario ingresa email y contraseña en /login
+2. Frontend envía POST /api/login/ con credenciales
+3. Backend valida credenciales usando EmailBackend
+4. Si válido, genera tokens JWT (access + refresh)
+5. Frontend almacena tokens en localStorage
+6. Frontend incluye access token en header Authorization: Bearer {token}
+7. Para rutas protegidas, PrivateRoute verifica token
+8. Si token expira, se puede refrescar con /api/token/refresh/
+
+
+13. FLUJO DE CONVERSIÓN DE MONEDAS
+================================================================================
+
+1. Usuario ingresa precio_usd en formulario de producto
+2. Frontend detecta cambio en precio_usd
+3. Frontend llama GET /api/productos/convert-currency/?amount=100
+4. Backend consulta exchangerate-api.com
+5. Backend retorna { usd, eur, cop }
+6. Frontend actualiza campos precio_eur y precio_cop automáticamente
+7. Al guardar, ProductoSerializer convierte precios en backend también
+
+
+14. FLUJO DE PREDICCIÓN DE INVENTARIO CON IA
+================================================================================
+
+1. Usuario hace clic en "Ver Predicciones IA" en página Inventario
+2. Frontend llama GET /api/inventario/predictions/
+3. Backend obtiene todos los inventarios (o filtrados por empresa)
+4. Backend prepara datos: producto, cantidad, empresa, fechas
+5. Backend llama get_inventory_predictions() en services.py
+6. Función valida productos con bajo stock (≤10 unidades)
+7. Si hay OPENAI_API_KEY, envía datos a GPT-3.5-turbo
+8. IA analiza y retorna predicciones con niveles de riesgo
+9. Backend valida que productos con ≤10 unidades tengan alertas
+10. Si nivel_riesgo == 'ALTO', envía emails automáticos a administradores
+11. Backend retorna array de alertas
+12. Frontend muestra alertas en cards de Bootstrap con badges de riesgo
+
+
+15. FLUJO DE ENVÍO DE PDF POR EMAIL
+================================================================================
+
+1. Usuario hace clic en "Enviar PDF por Email" en página Inventario
+2. Frontend muestra modal de Bootstrap para ingresar email
+3. Frontend valida formato de email (debe contener @)
+4. Usuario ingresa email y confirma
+5. Frontend llama POST /api/inventario/send-pdf/{empresa_nit}/
+6. Backend genera PDF usando generate_pdf()
+7. Backend envía email usando send_pdf_email() con PDF adjunto
+8. Backend retorna mensaje de éxito
+9. Frontend muestra mensaje de éxito
+
+
+16. ARQUITECTURA LIMPIA Y SEPARACIÓN DE CAPAS
+================================================================================
+
+16.1. Principios de Arquitectura Limpia Aplicados
+
+El proyecto implementa Arquitectura Limpia separando las responsabilidades en capas:
+
+✓ Capa de Dominio (domain/):
+  - Contiene únicamente entidades y reglas de negocio
+  - Sin dependencias de frameworks (Django, Flask, etc.)
+  - Sin dependencias de infraestructura (bases de datos, APIs externas)
+  - Validaciones de negocio en las entidades
+  - Métodos de negocio en las entidades
+  - Gestionada con Poetry (pyproject.toml)
+
+✓ Capa de Aplicación e Infraestructura (backend/):
+  - Django REST Framework para exposición de APIs
+  - Django ORM para persistencia
+  - Adaptadores para mapear entre dominio y persistencia
+  - Integraciones externas (OpenAI, Email, PDF)
+  - Autenticación y autorización
+
+✓ Desacoplamiento:
+  - Las entidades de dominio no conocen Django
+  - Los modelos Django pueden ser reemplazados sin afectar el dominio
+  - Las reglas de negocio están centralizadas en el dominio
+  - Los adaptadores permiten cambiar la implementación de persistencia
+
+16.2. Gestión de Dependencias con Poetry
+
+El paquete de dominio utiliza Poetry para gestión de dependencias:
+- Archivo: domain/pyproject.toml
+- Instalación: poetry install (desde domain/)
+- Consumo desde backend: pip install -e ../domain o configuración en settings.py
+
+16.3. Ventajas de la Arquitectura Implementada
+
+✓ Mantenibilidad: Cambios en el dominio no afectan la infraestructura
+✓ Testabilidad: Entidades de dominio pueden probarse sin Django
+✓ Reutilización: El dominio puede usarse en otros proyectos
+✓ Escalabilidad: Fácil agregar nuevas capas o cambiar implementaciones
+✓ Separación de Responsabilidades: Cada capa tiene un propósito claro
+
+
+17. PRINCIPIOS SOLID APLICADOS EN EL PROYECTO
+================================================================================
+
+15.1. Single Responsibility Principle (SRP) - Principio de Responsabilidad Única
+
+✓ Serializers (backend/api/serializers.py):
+  - Cada serializer tiene una única responsabilidad: validar y transformar datos
+  - UserSerializer: solo maneja datos de usuario
+  - ProductoSerializer: solo maneja datos de producto
+  - InventarioSerializer: solo maneja datos de inventario
+
+✓ Utilidades (backend/api/utils.py):
+  - generate_pdf(): única responsabilidad de generar PDFs
+  - send_pdf_email(): única responsabilidad de enviar emails
+  - generate_blockchain_hash(): única responsabilidad de generar hashes
+
+✓ Servicios (backend/api/services.py):
+  - get_ai_product_suggestions(): solo maneja sugerencias de IA
+  - get_inventory_predictions(): solo maneja predicciones de inventario
+
+✓ Permisos (backend/api/permissions.py):
+  - IsAdministrador: solo valida rol de administrador
+  - IsAdministradorOrReadOnly: solo valida permisos de lectura/escritura
+
+✓ ViewSets (backend/api/views.py):
+  - Cada ViewSet maneja solo una entidad (Empresa, Producto, Inventario)
+  - LoginView: solo maneja autenticación
+
+✓ Componentes Frontend (Atomic Design):
+  - Atoms: componentes con una sola responsabilidad (Button, Input, Label)
+  - Molecules: combinan atoms para una funcionalidad específica (FormField)
+  - Organisms: componentes complejos con responsabilidad bien definida (Layout, PrivateRoute)
+
+
+15.2. Open/Closed Principle (OCP) - Principio Abierto/Cerrado
+
+✓ Extensiones mediante decoradores @action:
+  - Los ViewSets están cerrados para modificación pero abiertos para extensión
+  - Ejemplo: @action(detail=True, methods=['get']) para ai_suggestions
+  - Permite agregar nuevas funcionalidades sin modificar código existente
+
+✓ Métodos create() y update() en Serializers:
+  - ProductoSerializer extiende funcionalidad base mediante métodos create/update
+  - Agrega conversión de monedas sin modificar la estructura base del serializer
+
+✓ Herencia en Modelos:
+  - User extiende AbstractBaseUser y PermissionsMixin
+  - Permite agregar funcionalidades sin modificar la clase base
+
+✓ Componentes React reutilizables:
+  - Componentes base (Atoms) pueden extenderse sin modificación
+  - Props permiten personalización sin cambiar el componente
+
+
+15.3. Liskov Substitution Principle (LSP) - Principio de Sustitución de Liskov
+
+✓ Permisos Personalizados:
+  - IsAdministrador y IsAdministradorOrReadOnly pueden sustituir a BasePermission
+  - Implementan has_permission() manteniendo la misma interfaz
+
+✓ Serializers:
+  - Todos los serializers pueden sustituir a serializers.Serializer o ModelSerializer
+  - Mantienen la misma interfaz (is_valid(), save(), data)
+
+✓ Backends de Autenticación:
+  - EmailBackend puede sustituir a ModelBackend
+  - Implementa authenticate() manteniendo la misma firma
+
+
+15.4. Interface Segregation Principle (ISP) - Principio de Segregación de Interfaces
+
+✓ Permisos Especializados:
+  - IsAdministrador: solo para validar administradores
+  - IsAdministradorOrReadOnly: solo para validar lectura/escritura
+  - No hay un permiso gigante que haga todo, están segregados por necesidad
+
+✓ Serializers Específicos:
+  - InventarioCreateSerializer: solo para crear (campos mínimos)
+  - InventarioSerializer: para leer/actualizar (incluye campos relacionados)
+  - Cada serializer expone solo lo necesario
+
+✓ Componentes Frontend:
+  - Componentes pequeños y específicos (Button, Input, Select)
+  - No hay componentes monolíticos que hagan demasiadas cosas
+  - Cada componente tiene props específicas para su funcionalidad
+
+
+15.5. Dependency Inversion Principle (DIP) - Principio de Inversión de Dependencias
+
+✓ Inyección de Dependencias en Django:
+  - ViewSets reciben serializers, permissions y queryset como dependencias
+  - No dependen de implementaciones concretas, dependen de abstracciones
+  - Ejemplo: serializer_class puede cambiarse sin modificar el ViewSet
+
+✓ Configuración mediante Variables de Entorno:
+  - El código depende de abstracciones (os.getenv()) no de valores concretos
+  - Database, Email, OpenAI API: configuración inyectada, no hardcodeada
+
+✓ Uso de Django REST Framework:
+  - El código depende de abstracciones de DRF (ViewSet, Serializer, Permission)
+  - No depende de implementaciones concretas de Django
+
+✓ Separación de Servicios:
+  - services.py abstrae la lógica de IA
+  - utils.py abstrae la lógica de PDF y Email
+  - Las vistas dependen de estas abstracciones, no de implementaciones concretas
+
+✓ Context API en Frontend:
+  - Componentes dependen del contexto de autenticación (abstracción)
+  - No dependen directamente de localStorage o implementaciones específicas
+
+
+EJEMPLOS PRÁCTICOS DE SOLID EN EL PROYECTO:
+
+1. SRP en acción:
+   - Si necesito cambiar cómo se genera el PDF, solo modifico generate_pdf()
+   - Si necesito cambiar cómo se envían emails, solo modifico send_pdf_email()
+
+2. OCP en acción:
+   - Para agregar nueva funcionalidad a ProductoViewSet, uso @action decorator
+   - No necesito modificar el código existente del ViewSet
+
+3. LSP en acción:
+   - Puedo reemplazar IsAdministrador con otro permiso que implemente has_permission()
+   - El código que lo usa seguirá funcionando
+
+4. ISP en acción:
+   - Un componente que solo necesita mostrar datos usa InventarioSerializer
+   - Un componente que solo necesita crear usa InventarioCreateSerializer
+   - No se fuerza a usar un serializer con campos innecesarios
+
+5. DIP en acción:
+   - Si cambio de PostgreSQL a MySQL, solo cambio la configuración de DATABASES
+   - Si cambio de OpenAI a otra API de IA, solo modifico services.py
+   - El resto del código no necesita cambios
+
+
+18. PUNTOS CLAVE PARA LA ENTREVISTA
+================================================================================
+
+- Arquitectura: Arquitectura Limpia con capa de dominio independiente + Django REST API + React SPA
+- Capa de Dominio: Paquete independiente con Poetry, entidades puras sin dependencias de frameworks
+- Base de Datos: PostgreSQL con modelos relacionados (ForeignKey)
+- Adaptadores: Mapeo entre entidades de dominio y modelos Django
+- Autenticación: JWT con backend personalizado por email
+- Permisos: Dos roles (ADMINISTRADOR, EXTERNO) con permisos diferenciados
+- IA: Integración con OpenAI para sugerencias y predicciones
+- Blockchain: Hashing SHA-256 para transacciones de inventario
+- Monedas: Conversión automática USD → EUR, COP usando API externa
+- PDF: Generación con ReportLab y envío por email
+- Diseño: Atomic Design + Bootstrap para UI responsive
+- Validaciones: Frontend, Backend (serializers) y Capa de Dominio (entidades)
+- Manejo de Errores: Modales de Bootstrap para errores de login y validaciones
+- Estados de Carga: Spinners y loading states en todas las operaciones async
+- Principios SOLID: Aplicados en arquitectura, serializers, permisos y componentes
+- Arquitectura Limpia: Separación clara entre dominio, aplicación e infraestructura
+
+================================================================================
+                            FIN DEL DOCUMENTO
+================================================================================
+
